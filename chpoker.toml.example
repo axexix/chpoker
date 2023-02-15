@@ -1,0 +1,9 @@
+base_url =
+
+idp_metadata_urls = [
+]
+
+[sp_config]
+# the settings in this section are forwarded to pysaml
+key_file =
+cert_file =

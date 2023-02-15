@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "chpoker"
+version = "0.2.1"
+description = "CHarming scrum POKER"
+license = "AGPL-3.0"
+authors = ["Alex Kovryhin <a.kovryhin@pm.me>"]
+readme = ["README.md"]
+keywords = ["tool", "scrum-poker"]
+packages = [
+    { include = "chpoker" }
+]
+include = [
+    "chpoker/resources/**/*"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+aiohttp = "*"
+pysaml2 = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+
+[tool.poetry.scripts]
+chpoker = "chpoker:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
