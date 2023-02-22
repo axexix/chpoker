@@ -1,6 +1,7 @@
 from enum import StrEnum, auto, unique
 
 import logging
+import statistics
 
 from .models.user import Session, SessionType, IdentityUser
 
@@ -33,6 +34,7 @@ class PokerService:
         NEW_TARGET = auto()
         SCORES_REVEALED = auto()
         NO_IDENTITY_FOUND = auto()
+        LOG_MESSAGE_SENT = auto()
 
     def __init__(self, notification_service, identity_signer):
         self.notification_service = notification_service
@@ -48,8 +50,8 @@ class PokerService:
 
         raise ValueError()
 
-    def check_all_voted(self):
-        return all([user.score != 0 for user in self.users if user.voting])
+    def get_scores(self):
+        return [user.score for user in self.users if user.voting]
 
     def purge_inactive_sessions(self, user):
         for session in user.sessions:
@@ -176,12 +178,24 @@ class PokerService:
 
         await self.update_user(user, score=score)
 
-        if self.check_all_voted():
+        if all(self.get_scores()):
             await self.reveal_scores()
 
     async def reveal_scores(self, session_id=None):
         logger.info("revealing scores")
 
         self.scores_revealed = True
+        scores = sorted(filter(lambda x: x > 0, self.get_scores()))
 
         await self.notify(self.Events.SCORES_REVEALED)
+
+        if scores:
+            msg = "scores: %s\nmean: %.2f\nmedian: %.2f" % (
+                ", ".join([str(score) for score in scores]),
+                statistics.mean(scores),
+                statistics.median(scores)
+            )
+        else:
+            msg = "no votes"
+
+        await self.notify_hosts(self.Events.LOG_MESSAGE_SENT, msg)
