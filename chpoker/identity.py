@@ -8,6 +8,10 @@ from hmac import compare_digest
 from .models.identity import Identity, DebugIdentity
 
 
+class InvalidPayload(Exception):
+    pass
+
+
 class InvalidSignature(Exception):
     pass
 
@@ -79,4 +83,12 @@ class DebugIdentitySigner(BaseIdentitySigner):
         if signed_identity:
             return DebugIdentity(**json.loads(signed_identity))
 
-        return DebugIdentity(username="User%d" % next(self.auto_user_counter), can_moderate=True)
+        next_id = next(self.auto_user_counter)
+
+        return DebugIdentity(
+            id="user_%d" % next_id,
+            first_name="User",
+            last_name="Debug",
+            display_name="User %d" % next_id,
+            can_moderate=True
+        )

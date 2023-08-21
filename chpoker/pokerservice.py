@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum, auto, unique
 
 import logging
@@ -43,9 +44,9 @@ class PokerService:
         self.users = []
         self.scores_revealed = False
 
-    def find_user_by_name(self, name):
+    def find_user_by_remote_id(self, remote_id):
         for user in self.users:
-            if user.name == name:
+            if user.remote_id == remote_id:
                 return user
 
         raise ValueError()
@@ -53,11 +54,20 @@ class PokerService:
     def get_scores(self):
         return [user.score for user in self.users if user.voting]
 
-    def purge_inactive_sessions(self, user):
-        for session in user.sessions:
+    async def purge_inactive_sessions(self, user=None):
+        affected_users = set()
+
+        for session_id, session in self.sessions_by_id.items():
+            if user and session.user != user:
+                continue
+
             if not session.active:
-                user.sessions.remove(session)
-                del self.sessions_by_id[session.id]
+                session.user.sessions.remove(session)
+                del self.sessions_by_id[session_id]
+                affected_users.add(session.user)
+
+        for user in affected_users:
+            await self.update_user(user)
 
     async def create_session(self, session_id, session_data):
         try:
@@ -68,7 +78,7 @@ class PokerService:
             raise IdentityError("error loading identity for session %s" % session_id)
 
         try:
-            user = self.find_user_by_name(identity.username)
+            user = self.find_user_by_remote_id(identity.id)
         except ValueError:
             user = IdentityUser(identity=identity)
             self.users.append(user)
@@ -84,25 +94,26 @@ class PokerService:
 
         try:
             session = self.sessions_by_id[session_id]
+            session.connected = True
         except KeyError:
             session = await self.create_session(session_id, session_data)
+            await self.notification_service.publish(session.id, self.Events.LOGGED_OUT_USER)
 
-        session.active = True
-        self.purge_inactive_sessions(session.user)
-
+        await self.purge_inactive_sessions(session.user)
         await self.update_user(session.user)
 
     async def on_disconnected(self, session_id):
         logger.info("disconnecting session: %s", session_id)
 
         session = self.sessions_by_id[session_id]
-        session.active = False
+        session.connected = False
+        session.last_seen = datetime.now()
 
         await self.update_user(session.user)
 
     async def notify(self, event, *args, session_type=SessionType.HOST | SessionType.VOTER, user=None):
         for session in self.sessions_by_id.values():
-            if not(session.active and session.session_type & session_type):
+            if not(session.connected and session.session_type & session_type):
                 continue
 
             if user and session.user is not user:
@@ -145,17 +156,22 @@ class PokerService:
         await self.notification_service.publish(session_id, self.Events.LOGGED_IN_HOST)
         logger.info("client %s joined as host", session_id)
 
+        await self.purge_inactive_sessions()
+
         for user in self.users:
             if user.active and user.voting:
                 await self.notification_service.publish(session_id, self.Events.JOINED_MEETING, user)
 
     async def logout_user(self, session_id):
         session = self.sessions_by_id[session_id]
-        session.session_type = SessionType.NONE
+        was_voting = session.user.voting
 
-        await self.notification_service.publish(session_id, self.Events.LOGGED_OUT_USER)
+        for session in session.user.sessions:
+            session.session_type = SessionType.NONE
 
-        if not session.user.voting:
+        await self.notify(self.Events.LOGGED_OUT_USER, session_type=SessionType.ANY, user=session.user)
+
+        if was_voting:
             await self.notify_hosts(self.Events.LEFT_MEETING, session.user)
 
         logger.info("logged out: %s", session_id)

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "chpoker"
-version = "0.2.2"
+version = "0.3.0"
 description = "CHarming scrum POKER"
 license = "AGPL-3.0"
 authors = ["Alex Kovryhin <a.kovryhin@pm.me>"]
@@ -10,16 +10,19 @@ packages = [
     { include = "chpoker" }
 ]
 include = [
-    "chpoker/resources/**/*"
+    "chpoker/resources/*.html",
+    "chpoker/resources/static/*.wasm",
+    "chpoker/resources/static/*.js"
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11"
-aiohttp = "*"
-pysaml2 = "*"
+python = ">=3.11,<4"
+aiohttp = "^3.8.5"
+pysaml2 = "^7.4.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
+python-lsp-server = {extras = ["flake8", "rope", "yapf"], version = "*"}
 
 [tool.poetry.scripts]
 chpoker = "chpoker:main"

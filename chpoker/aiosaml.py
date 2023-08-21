@@ -59,10 +59,12 @@ class AiosamlApplication(web.Application):
                     "want_assertions_signed": True,
                     "want_response_signed": False,
                     "required_attributes": [
-                        "username",
+                        "first_name",
+                        "last_name"
                     ],
                     "optional_attributes": [
-                        "can_moderate",
+                        "display_name",
+                        "can_moderate"
                     ],
                     "requested_attribute_name_format": NAME_FORMAT_BASIC,
                 },
@@ -89,7 +91,10 @@ async def assertion_consumer_service(request, *response_args):
 
     if request.app.create_identity:
         identity = Identity(
-            username=identity["username"][0],
+            id=identifier,
+            first_name=identity["first_name"][0],
+            last_name=identity["last_name"][0],
+            display_name=identity["display_name"][0],
             can_moderate=identity["can_moderate"][0] == "true"
         )
 

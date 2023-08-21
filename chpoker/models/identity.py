@@ -4,8 +4,11 @@ from datetime import datetime, timedelta
 
 @dataclass
 class BaseIdentity:
-    username: str
-    can_moderate: bool
+    id: str
+    first_name: str
+    last_name: str
+    display_name: str = None
+    can_moderate: bool = False
 
     @property
     def valid(self):

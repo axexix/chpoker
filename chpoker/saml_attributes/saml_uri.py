@@ -4,11 +4,15 @@
 MAP = {
     "identifier": "urn:oasis:names:tc:SAML:2.0:attrname-format:uri",
     "fro": {
-        "username": "username",
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "display_name": "display_name",
         "can_moderate": "can_moderate"
     },
     "to": {
-        "username": "username",
+        "first_name": "first_name",
+        "last_name": "last_name",
+        "display_name": "display_name",
         "can_moderate": "can_moderate"
     },
 }
