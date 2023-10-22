@@ -55,13 +55,18 @@ class PokerService:
         return [user.score for user in self.users if user.voting]
 
     async def purge_inactive_sessions(self, user=None):
+        to_remove = set()
+
         for session_id, session in self.sessions_by_id.items():
             if user and session.user != user:
                 continue
 
             if not session.active:
                 session.user.sessions.remove(session)
-                del self.sessions_by_id[session_id]
+                to_remove.add(session_id)
+
+        for session_id in to_remove:
+            del self.sessions_by_id[session_id]
 
     async def create_session(self, session_id, session_data):
         try:
