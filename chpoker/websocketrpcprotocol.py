@@ -13,6 +13,7 @@ class WebSocketRPCProtocol:
 
     def __init__(self):
         self.service_container = {}
+        self.service_allowed_methods = {}
         self.disconnect_handlers = {}
         self.clients_by_id = {}
 
@@ -67,8 +68,14 @@ class WebSocketRPCProtocol:
                         raise Exception("unhandled message of type %s" % message_body["type"])
 
                     rpc_body = message_body["rpc"]
-                    service = self.service_container[rpc_body["service"]]
-                    await getattr(service, rpc_body["method"])(client_id, **rpc_body.get("params", {}))
+                    service_name = rpc_body["service"]
+                    method_name = rpc_body["method"]
+                    service = self.service_container[service_name]
+
+                    if method_name in self.service_allowed_methods[service_name]:
+                        await getattr(service, method_name)(client_id, **rpc_body.get("params", {}))
+                    else:
+                        logger.warning("method %s is not allowed for service %s", method_name, service_name)
                 except Exception as e:
                     logger.exception(str(e))
             elif msg.type == aiohttp.WSMsgType.close:
@@ -77,9 +84,10 @@ class WebSocketRPCProtocol:
         for service_name, service in self.service_container.items():
             await service.on_disconnected(client_id)
 
-    def register_service(self, service_instance):
+    def register_service(self, service_instance, allowed_methods):
         service_name = service_instance.__class__.__name__
         self.service_container[service_name] = service_instance
+        self.service_allowed_methods[service_name] = allowed_methods
 
     async def send_event(self, client_id, event_data):
         socket = self.clients_by_id[client_id]

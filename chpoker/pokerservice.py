@@ -55,8 +55,6 @@ class PokerService:
         return [user.score for user in self.users if user.voting]
 
     async def purge_inactive_sessions(self, user=None):
-        affected_users = set()
-
         for session_id, session in self.sessions_by_id.items():
             if user and session.user != user:
                 continue
@@ -64,10 +62,6 @@ class PokerService:
             if not session.active:
                 session.user.sessions.remove(session)
                 del self.sessions_by_id[session_id]
-                affected_users.add(session.user)
-
-        for user in affected_users:
-            await self.update_user(user)
 
     async def create_session(self, session_id, session_data):
         try:
@@ -177,6 +171,10 @@ class PokerService:
         logger.info("logged out: %s", session_id)
 
     async def new_target(self, session_id):
+        session = self.sessions_by_id[session_id]
+        if not session.user.hosting:
+            raise PermissionsError("you are not a host")
+
         self.scores_revealed = False
 
         for user in self.users:
@@ -195,9 +193,16 @@ class PokerService:
         await self.update_user(user, score=score)
 
         if all(self.get_scores()):
-            await self.reveal_scores()
+            await self._reveal_scores()
 
-    async def reveal_scores(self, session_id=None):
+    async def reveal_scores(self, session_id):
+        session = self.sessions_by_id[session_id]
+        if not session.user.hosting:
+            raise PermissionsError("you are not a host")
+
+        await self._reveal_scores()
+
+    async def _reveal_scores(self):
         logger.info("revealing scores")
 
         self.scores_revealed = True

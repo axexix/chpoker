@@ -58,7 +58,14 @@ def main():
         identity_signer=identity_signer
     )
 
-    rpc_protocol.register_service(pokerservice)
+    rpc_protocol.register_service(pokerservice, {
+        "login_voter",
+        "login_host",
+        "logout_user",
+        "new_target",
+        "estimate_target",
+        "reveal_scores"
+    })
 
     webserver = WebServer()
     webserver.add_protocol("ws", rpc_protocol)
